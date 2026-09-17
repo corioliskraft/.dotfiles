@@ -36,6 +36,26 @@ Different executable names do not establish independence if they route to the sa
 
 Inspect the host's currently available agents, tools, and configured reviewer integrations. Resolve them dynamically; do not assume a CLI name, model identifier, authentication flow, home-directory path, or workstation layout.
 
+If `resources/reviewer-preferences.json` exists, read it before selecting the
+reviewer. It records the maintainer's default provider/model, effort, review
+surface, permission mode, fallback surface, and round cap. A request in the
+current conversation overrides that file. Treat these as preferences only when
+the named capability is currently usable and can satisfy the read-only
+requirements; never invent invocation syntax from the preference file or weaken
+isolation to honor it. The round cap is a stopping condition, not a requirement
+to consume every round.
+
+When the preferred surface is `claude-desktop`, start a new Claude Code session
+inside the Desktop app for the target working directory, select the configured
+model, effort, and Plan/read-only mode before sending the validated brief, and
+verify that the session is visible in the Desktop sidebar. Continue later rounds
+in that same Desktop conversation. Use the host's supported Desktop/deep-link
+or UI capability; do not substitute `claude -p`, whose `sdk-cli` session is not
+the same visible surface. If Desktop is unavailable or cannot enforce the
+required settings, use `fallback_surface` only after telling the user that live
+Desktop visibility will be lost, and label the actual reviewer capability in
+the final report.
+
 Select in this order:
 
 1. A usable read-only reviewer from a different model provider.
@@ -56,7 +76,16 @@ Read `resources/providers.md` for capability requirements and selection rules. U
 
 ### 3. Write a Complete Brief
 
-Use `resources/brief-template.md`. Include:
+Materialize every review brief from `resources/brief-template.md`; do not
+recreate or summarize the template from memory. Shortening may compress the
+content supplied inside a section. It must not remove any mandatory section or
+mandatory reviewer check, nor merge two sections together. Then run:
+
+```bash
+node <double-check-skill-dir>/scripts/validate-brief.mjs <brief-path>
+```
+
+Do not launch the reviewer unless validation passes. Use the template and include:
 
 - the original objective, not a solution-shaped paraphrase;
 - the original scope: the requirements, spec, acceptance criteria, or request the work was meant to satisfy, verbatim or by exact reference — scope fidelity cannot be judged without it;
@@ -66,9 +95,13 @@ Use `resources/brief-template.md`. Include:
 - validation evidence already collected, including failures or known gaps;
 - enough surrounding context to judge the work without widening the review target;
 - the riskiest claims to attack;
+- the canonical touched-production inventory, including every changed function
+  or symbol as a stable `file:symbol` identifier, or the exact no-production-code
+  marker; and
+- the complete touched-production-code simplification check when production code changed; and
 - the required finding shape and exact verdict strings.
 
-Materialize in-conversation work in a scratch artifact before review. Make it unambiguous whether the reviewer should inspect committed state, a working-tree diff, a staged diff, or a proposed artifact.
+Materialize in-conversation work in a scratch artifact before review. Make it unambiguous whether the reviewer should inspect committed state, a working-tree diff, a staged diff, or a proposed artifact. If the brief validator is unavailable, stop and report the missing skill resource rather than silently sending a shortened brief.
 
 ### 4. Always Check Scope Fidelity
 
@@ -139,7 +172,10 @@ The fixes themselves are fresh, unreviewed code written under review pressure. T
 - the final round includes claim dispositions and a coverage statement, and no scrutinize-hardest area rests on `inferred` evidence alone; and
 - the primary agent agrees no real issue remains.
 
-Cap ordinary review at about three or four rounds. If a substantive disagreement does not converge, present both arguments and a recommendation to the user instead of declaring success.
+Cap ordinary review at the configured `max_rounds` when reviewer preferences
+exist, otherwise about three or four rounds. If a substantive disagreement does
+not converge, present both arguments and a recommendation to the user instead
+of declaring success.
 
 ## Reporting
 
@@ -160,6 +196,7 @@ VERDICT: no-issues
 - Selecting a second executable backed by the same provider and calling it independent.
 - Allowing reviewer writes because read-only invocation is inconvenient.
 - Omitting the objective, original scope, constraints, diff scope, or validation evidence.
+- Freehanding or shortening a brief in a way that removes a mandatory template section or the touched-production-code simplification check.
 - Reviewing only the changed code's correctness while ignoring what was silently added to or removed from the requested scope.
 - Accepting a test deletion because the code it covered was also deleted, without checking that removing that behavior was itself in scope.
 - Accepting or dismissing findings based on confidence rather than evidence.

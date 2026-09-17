@@ -209,7 +209,7 @@ progress-guardian (orchestrates)
     ├─► For each implementation increment in the current slice or PR boundary:
     │   ├─→ tdd-guardian (RED-GREEN-REFACTOR)
     │   ├─→ ts-enforcer (before commits)
-    │   └─→ refactor-scan (after GREEN or another passing baseline, when applicable)
+    │   └─→ refactor-scan (after every GREEN or passing baseline that changed production code)
     │
     ├─► At end-of-phase PR readiness for each review boundary:
     │   └─→ mutation-testing (once against trunk or the immediate stack parent, then survivor handling)
@@ -242,7 +242,7 @@ progress-guardian (orchestrates)
 
 3. **For each step in plan**
    - CLASSIFY: Behavior change, pure behavior-preserving refactor/reduction, or mixed
-   - LOAD: For behavior change, `tdd`, `testing`, and `refactoring`; for pure preservation, the applicable testing/refactoring/reduction skills
+   - LOAD: For behavior change, `tdd`, `testing`, and `refactoring` whenever production code changes; for pure refactoring, `refactoring` plus the testing guidance needed for preservation; for reduction, `reduce-system-complexity`, the touched-production refactoring assessment, and applicable evidence skills
    - RED/GREEN: Required for changed behavior; pure preservation starts from passing evidence and stays behaviorally green
    - REFACTOR: Run `refactoring` skill and invoke `refactor-scan` to assess improvements
    - REPEAT: Continue without running the automated mutation harness after every increment, refactor, or commit
@@ -261,7 +261,7 @@ progress-guardian (orchestrates)
 
 7. **Pre-PR quality gate**
    - Verify each implemented slice loaded the skills for its behavior-changing or preservation-only path
-   - Confirm implementation and applicable refactoring/reduction assessment are complete
+   - Confirm the touched-production refactoring assessment and any governing reduction assessment are complete
    - Run mutation testing once for the actual review boundary where meaningful—trunk for one PR, the immediate parent for a stacked boundary—or review the documented alternate evidence and `N/A`
    - Address valuable survivors and re-run focused/diff mutation checks within that same gate
    - Run `/panel-review`: multi-lens self-review of the boundary

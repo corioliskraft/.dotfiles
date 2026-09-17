@@ -83,13 +83,13 @@ Classify every slice as **behavior change**, **pure refactor**, **reduction tran
 - **Path**: Behavior change — entry-to-observable path; pure refactor — preserved surface; either reduction class — affected path, program/terminal link, and mechanism scope
 - **Class**: Behavior change / pure refactor / reduction transition / terminal reduction
 - **Delivery**: Independent PR against trunk (default); cross-slice stack member referencing the shared `#### Delivery Shape`; or an intra-slice `#### Delivery Shape` map
-- **Required implementation skills**: Behavior change — `tdd`, `testing`, plus applicable refactoring; pure refactor — applicable evidence/refactoring; either reduction class — `reduce-system-complexity` plus applicable evidence skills; at each PR boundary's readiness — `mutation-testing` for the focused scope where meaningful
+- **Required implementation skills**: Behavior change — `tdd`, `testing`, plus `refactoring` whenever production code changes; pure refactor — `refactoring` plus the evidence skills needed for preservation; either reduction class — `reduce-system-complexity`, `refactoring` when production code changes, plus applicable evidence skills; at each PR boundary's readiness — `mutation-testing` for the focused scope where meaningful
 - **Reduction program**: For either reduction class, reference the plan-level program and terminal slice; otherwise `N/A`
 - **Transition/terminal evidence**: Transition — `behavior gate: pass`, independent verification, owner/removal/bounded-lifetime metadata for any bridge (`N/A` otherwise), `mechanism gate: pending — no net-reduction claim`; terminal — both gates pass and superseded machinery/expired bridges are gone; otherwise `N/A`
 - **Acceptance criteria**: Behavior change — observable outcome; pure refactor — conserved surface/evidence; transition — passing behavior gate, independent verification, optional bridge metadata or `N/A`, pending mechanism gate/no net claim; terminal — both gates and retired old machinery/expired bridges
 - **RED or preservation baseline**: Behavior change — failing behavior test; pure refactor — passing consumer-surface baseline; either reduction class — conserved-contract baseline from the reducer ledger
 - **GREEN or preservation change**: Minimum behavior implementation, or smallest mechanism-only change
-- **REFACTOR or REDUCE**: Run the applicable `refactoring` and/or `reduce-system-complexity` skill; record `N/A` when neither applies
+- **REFACTOR or REDUCE**: Whenever production code changes, run the touched-symbol assessment from `refactoring`; also run `reduce-system-complexity` for a selected reduction program. Record `N/A — no production code changed` only when true
 - **PRE-PR MUTATION or alternate evidence**: Once the current review boundary is otherwise PR-ready, run mutation testing once for the focused scope and address valuable survivors within that gate; otherwise record explicit `N/A` plus reachability/configuration/contract/integration/operational evidence
 - **PR-ready when**: The current boundary's acceptance criteria and end-of-phase mutation or alternate evidence are complete. A transition requires its behavior gate and independent checks to pass while its mechanism gate remains pending with no net claim; a terminal reduction requires both gates and retired old machinery/expired bridges.
 - **Slice complete when**: Its independent or cross-slice owning PR lands, or the top PR lands for an intra-slice stack.
@@ -101,7 +101,7 @@ Use the same adaptive fields as Slice 1. Classify the slice independently; do no
 ## Pre-PR Quality Gate
 
 Before each PR:
-1. Implementation complete — confirm applicable refactoring/reduction assessment and ordinary verification are complete
+1. Implementation complete — whenever production code changed, confirm the touched-symbol refactoring assessment and any governing reduction assessment are complete; otherwise record `N/A — no production code changed`
 2. Mutation or alternate evidence — run `mutation-testing` once for the accumulated PR scope where meaningful, address valuable survivors within the same gate, or review the explicit `N/A` rationale and proportionate evidence
 3. Typecheck and lint pass
 4. DDD glossary check (if applicable)
@@ -173,7 +173,7 @@ When every slice's owning PR has landed (or the top PR has landed for each intra
 |-------|-----------------|
 | `tdd-guardian` | Before behavior-change commits, to verify TDD compliance |
 | `ts-enforcer` | Before commits, to check TypeScript strictness |
-| `refactor-scan` | After GREEN or another passing preservation baseline, when refactoring is applicable |
+| `refactor-scan` | After every GREEN or passing preservation baseline that changed production code |
 | `learn` | At end of feature, to route durable learning through `expectations` |
 | `adr` | When architectural decisions need recording |
 | `docs-guardian` | When an affected maintained page needs updating |

@@ -142,7 +142,7 @@ A slice is the unit of planning and known-good value. By default it is also one 
 
 ## TDD Integration
 
-**Every behavior-changing slice uses fast RED-GREEN-REFACTOR increments, followed by one end-of-phase mutation or alternate-evidence gate when the slice is otherwise ready for its PR.** Before implementation, load `tdd`, `testing`, and applicable `refactoring` guidance. Use the `mutation-testing` mutator rules for cheap test-design guidance, but defer the automated harness until PR readiness. A true behavior-preserving refactor or `reduce-system-complexity` slice starts from passing proportionate preservation evidence and uses the same end-of-phase gate. Never fabricate a failing mechanism-count test or structural mutant. This section is a routing contract, not a replacement for those skills.
+**Every behavior-changing slice uses fast RED-GREEN-REFACTOR increments, followed by one end-of-phase mutation or alternate-evidence gate when the slice is otherwise ready for its PR.** Before implementation, load `tdd`, `testing`, and `refactoring` whenever production code changes. Use the `mutation-testing` mutator rules for cheap test-design guidance, but defer the automated harness until PR readiness. A true behavior-preserving refactor or `reduce-system-complexity` slice starts from passing proportionate preservation evidence and uses the same end-of-phase gate. Never fabricate a failing mechanism-count test or structural mutant. This section is a routing contract, not a replacement for those skills.
 
 For any stack, apply that cadence to every PR against its parent review boundary. Put tests in the PR that first owns the behavior, run the mutation-or-alternate-evidence gate once when each boundary is PR-ready, and require the top to prove every included slice's cumulative acceptance criteria or reduction gates. Do not defer tests or evidence upstack.
 
@@ -152,7 +152,7 @@ FOR EACH BEHAVIOR-CHANGING SLICE OR PR BOUNDARY:
     ├─► LOAD: Required implementation skills
     │   - `tdd` for RED-GREEN-REFACTOR
     │   - `testing` for behavior-driven tests and factories
-    │   - `refactoring` when restructuring is applicable; otherwise `N/A`
+    │   - `refactoring` whenever production code changes; otherwise `N/A — no production code changed`
     │
     ├─► CONFIRM: Present acceptance criteria for this slice
     │   - Human must approve criteria before any code is written
@@ -177,7 +177,9 @@ FOR EACH BEHAVIOR-CHANGING SLICE OR PR BOUNDARY:
     │
     ├─► REFACTOR: Assess improvements
     │   - See `refactoring` skill
-    │   - Only if it adds value
+    │   - Whenever production code changed, the assessment is mandatory; the edit is optional
+    │   - Inventory every touched production symbol as keep, simplify now, or follow-up
+    │   - Record `no valuable refactoring found` when the complete inventory is clean
     │   - Focused and affected tests stay green; do not rerun the full suite after every edit
     │
     ├─► REPEAT: Continue RED-GREEN-REFACTOR as needed
@@ -269,13 +271,13 @@ Read the repository's governing instructions and testing rules before writing sl
 **Path**: [Behavior change: entry point -> business path -> state/output -> observability. Pure refactor: preserved public surface. Either reduction class: affected trigger-to-outcome path, program/terminal link, and mechanism scope.]
 **Class**: Behavior change / pure refactor / reduction transition / terminal reduction.
 **Delivery**: [Independent PR against trunk (default); cross-slice stack member referencing the shared `#### Delivery Shape`; or an intra-slice `#### Delivery Shape` map.]
-**Required implementation skills**: For changed behavior, load `tdd`, `testing`, and applicable refactoring guidance. For a pure refactor, load only applicable testing and refactoring skills. Every reduction transition and terminal reduction loads `reduce-system-complexity` plus applicable evidence skills. At each PR boundary's readiness, load `mutation-testing` for the focused scope where meaningful or record the alternate-evidence `N/A`. Add UI/domain/architecture skills only when relevant.
+**Required implementation skills**: For changed behavior, load `tdd`, `testing`, and `refactoring` whenever production code changes. For a pure refactor, load refactoring plus the testing guidance needed for its preservation evidence. Every reduction transition and terminal reduction loads `reduce-system-complexity` plus applicable evidence skills. At each PR boundary's readiness, load `mutation-testing` for the focused scope where meaningful or record the alternate-evidence `N/A`. Add UI/domain/architecture skills only when relevant.
 **Reduction program**: [For either reduction class: reference the plan-level program and terminal slice; otherwise `N/A`.]
 **Transition/terminal evidence**: [Transition: `behavior gate: pass`, independent verification, bridge owner/removal/bounded-lifetime metadata when a bridge exists (`N/A` otherwise), and `mechanism gate: pending — no net-reduction claim`. Terminal: passing behavior gate, like-for-like mechanism gate, and removal of the superseded mechanism/expired bridges. Otherwise `N/A`.]
 **Acceptance criteria**: [Behavior change: specific observable outcome. Pure refactor: conserved surface plus preservation evidence. Transition: passing behavior gate, independent verification, optional bridge metadata or `N/A`, and pending mechanism gate/no net claim. Terminal: both gates pass and superseded machinery/expired bridges are gone. **Present to the human and get confirmation before writing any code.**]
 **RED or preservation baseline**: For behavior change, what failing behavior test will we write? For a pure refactor/reduction, which passing oracles and proportionate non-test evidence conserve the affected behavior and guarantees? Never assert implementation shape merely to create RED.
 **GREEN or preservation change**: What minimum code makes the new behavior pass, or what smallest mechanism-only change preserves the baseline?
-**REFACTOR**: Assess improvements (only if they add value).
+**REFACTOR**: Whenever production code changes, assess every touched production symbol and record `keep`, `simplify now`, or `follow-up` plus rationale. Apply changes only when they add value; otherwise record `no valuable refactoring found`. Use `N/A — no production code changed` only when true.
 **PRE-PR MUTATION or alternate evidence**: Once the current review boundary is otherwise PR-ready, run mutation testing once for its accumulated scope. Address valuable survivors and re-run focused/diff checks inside the same gate. Otherwise mark `N/A` and name reachability, configuration, contract, integration, or operational evidence; never invent structural mutants.
 **PR-ready when**: All acceptance criteria owned by the current boundary and its end-of-phase mutation/alternate-evidence obligations are met. A transition's behavior gate and independent checks pass while its mechanism gate remains truthfully pending with no net claim; a terminal reduction passes both gates and removes old machinery/expired bridges. The human approves the commit.
 **Slice complete when**: Its independent or cross-slice owning PR lands, or the top PR lands for an intra-slice stack.
@@ -287,7 +289,7 @@ Use the same adaptive fields as Slice 1. Classify the slice independently; do no
 ## Pre-PR Quality Gate
 
 Before each PR:
-1. Implementation complete — confirm applicable refactoring/reduction assessment and ordinary verification are complete
+1. Implementation complete — for every production-code change, confirm the touched-symbol refactoring inventory is complete and ordinary verification passes; otherwise record `N/A — no production code changed`
 2. Mutation or alternate evidence — run `mutation-testing` once for the accumulated PR scope where meaningful; address valuable survivors within the same gate, or review the explicit `N/A` rationale and proportionate evidence
 3. Typecheck and lint pass
 4. DDD glossary check — if the project uses DDD, verify all domain terms match the canonical glossary

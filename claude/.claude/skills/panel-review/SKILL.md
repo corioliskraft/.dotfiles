@@ -51,11 +51,11 @@ STOP and report instead of reviewing when the diff is empty or the target can't 
 
 ### 2. Scout inline
 
-A few cheap tool calls, no sub-agents: categorize changed files (production / test / config / docs), read the project's CLAUDE.md and key configs for traits, and collect the signals `references/lenses.md` needs for auto-detection. The scout also captures the change's own claim (PR title/body, plan slice, commit messages, or the user's stated intent for in-progress work) — the review judges the diff *against its claim*.
+A few cheap tool calls, no sub-agents: categorize changed files (production / test / config / docs), inventory every touched production function or symbol from the diff, read the project's CLAUDE.md and key configs for traits, and collect the signals `references/lenses.md` needs for auto-detection. Use stable `file:symbol` identifiers and exclude generated or vendored code. The scout also captures the change's own claim (PR title/body, plan slice, commit messages, or the user's stated intent for in-progress work) — the review judges the diff *against its claim*.
 
 ### 3. Compose the roster
 
-Per `references/lenses.md`: built-in lenses (readiness, quality) + core defaults + auto-detected conditional lenses, then apply the user's `only`/add/remove tokens. Show the final roster and rough scale (N lens nodes + verification) in one line before launching; for large rosters (>8 nodes) confirm with the user first unless they said `thorough`.
+Per `references/lenses.md`: built-in lenses (readiness, quality) + core defaults + auto-detected conditional lenses, then apply the user's `only`/add/remove tokens. Before launching, resolve `graph-engineering` and every selected skill lens from the installed catalog or an explicit readable skill path. Stop and report every missing requirement instead of silently substituting an unrelated skill or dropping the lens. Show the final roster and rough scale (N lens nodes + verification) in one line before launching; for large rosters (>8 nodes) confirm with the user first unless they said `thorough`.
 
 ### 4. Run the graph
 
@@ -89,6 +89,12 @@ Problem · Why it matters · Suggested fix (with copy-pasteable fix_prompt)
 ### Not covered                   ← lenses not run, scopes not assessable, node failures
 ```
 
+When production code changed, `Not covered` must include every supplied symbol
+absent from the refactoring lens's assessment, every symbol the refactoring lens
+found missing from the scout inventory, and a missing independent inventory audit.
+Run the deterministic checker named in the workflow template. A clean review
+cannot hide any production coverage gap.
+
 Recommendation rules: any confirmed `critical` → REQUEST CHANGES; unresolved lens conflict or failed readiness gate → NEEDS DISCUSSION; otherwise APPROVE with the minors listed.
 
 ### 7. Post (only when asked)
@@ -97,7 +103,7 @@ With the `post` token and a PR target: write the report to a scratch file and po
 
 ## Boundaries
 
-- **During development**, use the focused agents (`tdd-guardian`, `ts-enforcer`, `refactor-scan`) — this skill is the whole-boundary review at the end.
+- **During development**, use focused agents such as `tdd-guardian`, `ts-enforcer`, and `refactor-scan` when the host provides them. Otherwise use the host's generic agent/sub-agent mechanism with the corresponding installed skill; named Claude Code agents are not hard dependencies of this skill. This skill is the whole-boundary review at the end.
 - **`double-check`** answers a different question. This skill is **breadth through your own standards**: many same-provider sub-agents, each applying one of *your* installed skills to the diff, findings verified and merged into one report — wide coverage, but every node shares the host model's blind spots. `double-check` is **independence**: one strong reviewer, preferably from a *different provider*, starting cold with no inherited context, checking scope fidelity against the original requirements and arguing findings across rounds until genuine convergence. Fan out with `/panel-review` for coverage; bring in `double-check` when the risk is that *you* (and every sub-agent you spawn) are wrong the same way — high stakes, contested calls, or a final independent gate before shipping. They compose: `/panel-review` first, `double-check` last.
 - **`/code-review`** (built-in) runs Anthropic's fixed issue-class lenses; this skill exists precisely to compose *your* skills instead.
 - The review reads the target repository's own conventions (its CLAUDE.md, glossary, ADRs) as part of the scout; a lens finding that contradicts an explicit local convention is reported as a conflict, not enforced.
@@ -107,6 +113,7 @@ With the `post` token and a PR target: write the report to a scratch file and po
 - Was the roster composed (defaults + detection + user tokens) and shown before launch?
 - Did every lens node load its one skill and stay inside its boundary?
 - Did every reported finding survive independent adversarial verification, with `file:line` evidence?
+- When production code changed, did the refactoring lens assess every inventoried touched production symbol and did the report expose any coverage gaps?
 - Are conflicts, unverifiable claims, clean areas, and coverage gaps all explicit in the report?
 - When the readiness lens ran, does its verdict follow `references/pr-readiness.md`, including the mutation-evidence freshness model — and when it was skipped for a mid-development target, is that listed under "Not covered"?
 - Was anything posted to GitHub only with the explicit `post` token?

@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: RED-GREEN-REFACTOR for production behavior changes, followed by mutation testing or alternate evidence once at the end-of-phase PR-readiness gate. Use before implementing new features, bug fixes, or any changed observable behavior, and as the governing workflow for mixed implementation work. Load it for any request to add, implement, or fix production code, including a bug report that calls the fix a one-liner or a quick change in a named file — a small fix still starts from a failing behavior test, not from an edit. This is the workflow, not the whole toolkit — load it alongside, not instead of, functional for logic or data-shaping changes (pricing, tiering, filtering, merging, sorting, totals), refactoring when a change also tidies already-tested code, front-end-testing (react-testing for React components) when the behaviour under test lives in a browser — a form, a button, a spinner, a page — and any architecture skill the repository declares (hexagonal-architecture, domain-driven-design). Do not use for pure behavior-preserving refactoring or mechanism reduction; those start from passing proportionate evidence via refactoring or reduce-system-complexity, never fabricated RED or structural mutants. Not for plan-only requests; use planning first for significant multi-slice work.
+description: RED-GREEN-REFACTOR for production behavior changes, followed by mutation testing or alternate evidence once at the end-of-phase PR-readiness gate. Use before implementing new features, bug fixes, or any changed observable behavior, and as the governing workflow for mixed implementation work. Load it for any request to add, implement, or fix production code, including a bug report that calls the fix a one-liner or a quick change in a named file — a small fix still starts from a failing behavior test, not from an edit. This is the workflow, not the whole toolkit — load it alongside, not instead of, functional for logic or data-shaping changes (pricing, tiering, filtering, merging, sorting, totals), refactoring whenever production code changes, front-end-testing (react-testing for React components) when the behaviour under test lives in a browser — a form, a button, a spinner, a page — and any architecture skill the repository declares (hexagonal-architecture, domain-driven-design). Do not use for pure behavior-preserving refactoring or mechanism reduction; those start from passing proportionate evidence via refactoring or reduce-system-complexity, never fabricated RED or structural mutants. Not for plan-only requests; use planning first for significant multi-slice work.
 ---
 
 # Test-Driven Development
@@ -115,7 +115,10 @@ Repository-specific test, coverage, mutation, and evidence-freshness rules take 
 
 ### REFACTOR: Assess Improvements
 - Assess after GREEN using the passing behavior tests as the working safety net
-- Load the `refactoring` skill only when restructuring is applicable; record `N/A` otherwise
+- Whenever production code changed, load `refactoring` and assess every touched
+  production symbol. The assessment is mandatory; a refactoring edit is not.
+- Record `N/A — no production code changed` only for test-, documentation-,
+  generated-, or configuration-only increments
 - Obtain approval for the working-baseline commit before refactoring when the workflow uses commits as safety checkpoints
 - Keep focused and affected tests green after each small refactor; run the full suite at the pre-PR gate
 
@@ -149,7 +152,7 @@ Coverage is a diagnostic, not a universal target. Run the repository's coverage 
 3. **Start or observe focused feedback** - prefer the repository-owned watcher; otherwise use a diff-selected Vitest watcher only after its installed version/configuration has passed the canonical live proof, or use the affected one-shot equivalent; confirm the expected test fails for the expected reason
 4. **Implement minimum** - just enough to pass
 5. **Run focused/affected tests** - confirm the behavior and its related tests pass
-6. **Refactor if applicable and valuable** - improve code structure while focused and affected tests stay green
+6. **Assess every touched production symbol; refactor if valuable** - record a clean `keep` disposition when no edit adds value, and keep focused and affected tests green when changing structure
 7. **Repeat RED-GREEN-REFACTOR** - continue without running the mutation harness until the planned PR scope is complete
 8. **At PR readiness, run the mutation gate once** - stop watchers, run mutation testing where meaningful (or record explicit `N/A` plus proportionate alternate evidence), address valuable survivors within that gate, and complete the repository-defined non-watch PR checks. Apply the target repository's evidence-invalidation rule; use this distribution's freshness model (`panel-review` skill, `references/pr-readiness.md`) only when no stricter repository rule exists
 
@@ -242,7 +245,7 @@ REFACTOR: affected tests remained green after permission resolution was simplifi
 
 ## Refactoring Priority
 
-After GREEN establishes a passing behavior-test baseline, assess and classify improvement opportunities when restructuring is applicable. For the priority classification table and detailed methodology, load the `refactoring` skill — it owns that guidance. Mutation testing verifies the accumulated result later at the end-of-phase PR-readiness gate.
+After every GREEN that changed production code, assess and classify improvement opportunities for every touched production symbol. For the priority classification table and detailed methodology, load the `refactoring` skill — it owns that guidance. Mutation testing verifies the accumulated result later at the end-of-phase PR-readiness gate.
 
 ---
 
@@ -285,4 +288,4 @@ Before marking work complete:
 - [ ] The final reply states the mutation gate outcome — ran once for the accumulated scope with valuable survivors addressed, explicit `N/A` plus proportionate alternate evidence, or explicitly deferred to the PR gate because this slice is not yet PR-ready; never left unstated
 - [ ] Test state is isolated; fixtures or factories are used where they improve clarity
 - [ ] Tests verify behavior (not implementation details)
-- [ ] Refactoring assessed when applicable and applied if valuable, or explicitly `N/A`
+- [ ] Every touched production symbol was assessed; valuable refactoring was applied when found, or the result explicitly says `no valuable refactoring found`; `N/A` is used only when no production code changed

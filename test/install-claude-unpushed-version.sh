@@ -38,6 +38,7 @@ mkdir -p "$TMPDIR/bin"
 cat > "$TMPDIR/bin/git" <<STUB
 #!/usr/bin/env bash
 args="\$*"
+printf '%s\n' "\$args" >> "\${GIT_LOG:-/dev/null}"
 case "\$args" in
   *ls-remote*--tags*)
     echo "$RELEASE_SHA	refs/tags/v4.12.1"
@@ -65,7 +66,7 @@ chmod +x "$TMPDIR/bin/git" "$TMPDIR/bin/npx"
 
 run_installer() {
   local dir="$1"; shift
-  ( cd "$dir" && HOME="$HOME_DIR" PATH="$TMPDIR/bin:$PATH" NPX_LOG="$NPX_LOG" \
+  ( cd "$dir" && HOME="$HOME_DIR" PATH="$TMPDIR/bin:$PATH" NPX_LOG="$NPX_LOG" GIT_LOG="$GIT_LOG" \
       "$dir/install-claude.sh" --skills-only --no-external --no-impeccable "$@" 2>&1 )
 }
 
@@ -73,8 +74,8 @@ echo "Testing version resolution from anywhere..."
 echo ""
 
 # --- 1. A checkout whose HEAD was never pushed -------------------------------
-HOME_DIR="$TMPDIR/home1"; NPX_LOG="$TMPDIR/npx1.log"
-mkdir -p "$HOME_DIR/.claude/skills/tdd"; : > "$NPX_LOG"
+HOME_DIR="$TMPDIR/home1"; NPX_LOG="$TMPDIR/npx1.log"; GIT_LOG="$TMPDIR/git1.log"
+mkdir -p "$HOME_DIR/.claude/skills/tdd"; : > "$NPX_LOG"; : > "$GIT_LOG"
 echo "# mine" > "$HOME_DIR/.claude/skills/tdd/SKILL.md"
 
 set +e
@@ -100,8 +101,33 @@ else
   fail "the fallback must pin to the latest release commit"
 fi
 
+if grep -q 'for-each-ref.*refs/remotes/upstream/' "$GIT_LOG"; then
+  pass "checkout reachability follows the remote selected by source repository"
+else
+  fail "checkout reachability must not assume origin/main"
+fi
+
+# A similarly named repository must not win over the exact selected source.
+REMOTE_FIXTURE="$TMPDIR/remote-fixture"
+mkdir -p "$REMOTE_FIXTURE"
+cp "$REPO_ROOT/install-claude.sh" "$REMOTE_FIXTURE/"
+/usr/bin/git -C "$REMOTE_FIXTURE" init --quiet
+/usr/bin/git -C "$REMOTE_FIXTURE" remote add aaa-bogus "https://github.com/citypaul/.dotfiles-tools.git"
+/usr/bin/git -C "$REMOTE_FIXTURE" remote add upstream "https://github.com/citypaul/.dotfiles.git"
+/usr/bin/git -C "$REMOTE_FIXTURE" add install-claude.sh
+/usr/bin/git -C "$REMOTE_FIXTURE" -c user.email=t@t -c user.name=t commit --quiet -m fixture
+HOME_DIR="$TMPDIR/home-exact"; NPX_LOG="$TMPDIR/npx-exact.log"; GIT_LOG="$TMPDIR/git-exact.log"
+mkdir -p "$HOME_DIR"; : > "$NPX_LOG"; : > "$GIT_LOG"
+run_installer "$REMOTE_FIXTURE" >/dev/null
+if grep -q 'for-each-ref.*refs/remotes/upstream/' "$GIT_LOG" &&
+   ! grep -q 'for-each-ref.*refs/remotes/aaa-bogus/' "$GIT_LOG"; then
+  pass "source repository matching rejects similarly named remotes"
+else
+  fail "source repository matching must require the exact GitHub repository path"
+fi
+
 # --- 2. No checkout at all (a stray copy, or curl | bash) --------------------
-HOME_DIR="$TMPDIR/home2"; NPX_LOG="$TMPDIR/npx2.log"
+HOME_DIR="$TMPDIR/home2"; NPX_LOG="$TMPDIR/npx2.log"; GIT_LOG="$TMPDIR/git2.log"
 LOOSE="$TMPDIR/loose"; mkdir -p "$LOOSE" "$HOME_DIR"; : > "$NPX_LOG"
 cp "$REPO_ROOT/install-claude.sh" "$LOOSE/"
 
@@ -124,7 +150,7 @@ fi
 # --- 3. An explicit --version that the remote cannot serve ------------------
 # The pin is the user's own choice here, so it must fail — but only before
 # anything on disk has been touched.
-HOME_DIR="$TMPDIR/home3"; NPX_LOG="$TMPDIR/npx3.log"
+HOME_DIR="$TMPDIR/home3"; NPX_LOG="$TMPDIR/npx3.log"; GIT_LOG="$TMPDIR/git3.log"
 mkdir -p "$HOME_DIR/.claude/skills/tdd"; : > "$NPX_LOG"
 echo "# keep me" > "$HOME_DIR/.claude/skills/tdd/SKILL.md"
 
@@ -160,7 +186,7 @@ fi
 # A piped install leaves BASH_SOURCE unset. `dirname ""` resolves to `.`, so the
 # script once treated the user's current directory as its own checkout and
 # pinned the install to an unrelated repository's HEAD.
-HOME_DIR="$TMPDIR/home4"; NPX_LOG="$TMPDIR/npx4.log"
+HOME_DIR="$TMPDIR/home4"; NPX_LOG="$TMPDIR/npx4.log"; GIT_LOG="$TMPDIR/git4.log"
 FOREIGN="$TMPDIR/foreign"; mkdir -p "$FOREIGN" "$HOME_DIR"; : > "$NPX_LOG"
 /usr/bin/git -C "$FOREIGN" init --quiet
 /usr/bin/git -C "$FOREIGN" remote add origin "https://example.invalid/someone/other-repo.git"
@@ -170,7 +196,7 @@ echo hi > "$FOREIGN/f"
 FOREIGN_SHA="$(/usr/bin/git -C "$FOREIGN" rev-parse HEAD)"
 
 set +e
-OUT4=$( cd "$FOREIGN" && HOME="$HOME_DIR" PATH="$TMPDIR/bin:$PATH" NPX_LOG="$NPX_LOG" \
+OUT4=$( cd "$FOREIGN" && HOME="$HOME_DIR" PATH="$TMPDIR/bin:$PATH" NPX_LOG="$NPX_LOG" GIT_LOG="$GIT_LOG" \
   bash -s -- --skills-only --no-external --no-impeccable < "$REPO_ROOT/install-claude.sh" 2>&1 )
 STATUS4=$?
 set -e

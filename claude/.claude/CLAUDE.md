@@ -97,14 +97,16 @@ For detailed patterns and examples, load the `functional` skill.
 **Quick reference:**
 - RED: Write a failing behavior test before new or changed behavior
 - GREEN: Write MINIMUM code to pass test
-- REFACTOR OR REDUCE: Assess applicable improvements while ordinary behavior tests stay green
+- REFACTOR OR REDUCE: When production code changed, always assess the touched
+  production symbols for valuable simplification while ordinary behavior tests
+  stay green; making a refactoring edit remains optional
 - REPEAT: Continue the inner cycle without running the automated mutation harness after each increment, refactor, or commit
 - PRE-PR MUTATION GATE: When the phase is otherwise ready for a PR, run mutation testing once for the accumulated scope where meaningful; otherwise record `N/A` plus proportionate reachability, configuration, contract, integration, or operational evidence
 - KILL MUTANTS: During that gate, address valuable survivors and re-run focused/diff mutation checks as part of the same gate (ask the human when value is ambiguous)
 - **Wait for commit approval** before every commit
 - Each increment leaves codebase in working state
 For detailed TDD workflow, load the `tdd` skill.
-For a behavior-changing planned slice, load `tdd`, `testing`, and applicable refactoring guidance before code changes begin. Use the `mutation-testing` skill's mutator rules for cheap test-design guidance, but do not run its harness until the end-of-phase PR-readiness gate. For a pure behavior-preserving refactor/reduction, load only the applicable testing, refactoring, and reduction skills during implementation, then apply mutation testing or alternate evidence at the same PR gate; load `reduce-system-complexity` when net mechanism removal is claimed, and record why any other skill is `N/A`. Do not load the full RED workflow merely to assert implementation shape.
+For a behavior-changing planned slice, load `tdd`, `testing`, and `refactoring` whenever production code changes before code changes begin. Use the `mutation-testing` skill's mutator rules for cheap test-design guidance, but do not run its harness until the end-of-phase PR-readiness gate. For a pure behavior-preserving refactor, load `refactoring` plus the testing guidance needed for its preservation evidence; for a reduction, load `reduce-system-complexity` plus its applicable evidence skills. Then apply mutation testing or alternate evidence at the same PR gate. Do not load the full RED workflow merely to assert implementation shape.
 For refactoring methodology, load the `refactoring` skill.
 For removing total branches, states, dependencies, layers, flags, retries, jobs, or operational moving parts from a selected existing path while conserving behavior, load the `reduce-system-complexity` skill. Pure reductions use the verified REFACTOR path, not a fabricated structural RED test.
 For fuzzy product/design decisions, load `grill-me` when installed; otherwise
@@ -170,7 +172,8 @@ read-only or narrowly scoped work does not trigger setup.
 
 **Quick reference:**
 - ALWAYS FOLLOW TDD for behavior change; keep pure refactors/reductions behaviorally green from passing, proportionate preservation evidence
-- Assess refactoring after every green (but only if adds value)
+- Assess refactoring after every green that changed production code; inspect
+  every touched production symbol, but edit only when the assessment finds value
 - Ask "What do I wish I'd known at the start?" after significant changes
 - Route durable, non-obvious learnings through `expectations` to their actual
   owner: source/tests, glossary, accepted decision mechanism, maintained docs,

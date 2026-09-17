@@ -1,0 +1,10 @@
+{
+  "provider": "anthropic",
+  "reviewer": "Claude Sonnet 5",
+  "model": "sonnet",
+  "effort": "high",
+  "surface": "claude-desktop",
+  "permission_mode": "plan",
+  "fallback_surface": "sdk-cli",
+  "max_rounds": 4
+}

@@ -13,6 +13,7 @@
 #   ./install-claude.sh --no-agents        # Install without agents
 #   ./install-claude.sh --skills-only      # Install only skills
 #   ./install-claude.sh --version <ref>    # Use an exact reviewed release/commit
+#   ./install-claude.sh --source-repo OWNER/REPO  # Install from a maintained fork
 #   ./install-claude.sh --with-opencode    # Also install OpenCode configuration
 #
 # Run this script from an inspected checkout. When --version is omitted, the
@@ -38,7 +39,6 @@ INSTALL_OPENCODE=false
 INSTALL_EXTERNAL=true
 INSTALL_IMPECCABLE=true
 INSTALL_PONYTAIL=true
-BASE_URL="https://raw.githubusercontent.com/citypaul/.dotfiles"
 SKILLS_CLI_VERSION="1.5.22" # https://github.com/vercel-labs/skills/tree/v1.5.22
 
 # Reviewed immutable source revisions. Every source is pinned to a commit and
@@ -49,6 +49,7 @@ SKILLS_CLI_VERSION="1.5.22" # https://github.com/vercel-labs/skills/tree/v1.5.22
 # local path (see fetch_pinned_source). A subpath entry limits the fetch to
 # one directory for repos far larger than their skills.
 OWN_SKILLS_REPO_BASE="citypaul/.dotfiles"
+BASE_URL=""
 WEB_QUALITY_SKILLS_REPO="addyosmani/web-quality-skills#95d6e255afe1596b557d7a8498517884438f5b3a"
 NEXT_SKILLS_REPO="vercel/next.js#ae1e53a11f5379e715096b829178f4df92d35044"
 NEXT_SKILLS_SUBPATH="skills"
@@ -194,6 +195,14 @@ while [[ $# -gt 0 ]]; do
       VERSION="$2"
       shift 2
       ;;
+    --source-repo)
+      if [[ $# -lt 2 || "$2" == --* ]]; then
+        echo -e "${RED}Error: --source-repo requires an OWNER/REPO value${NC}"
+        exit 1
+      fi
+      OWN_SKILLS_REPO_BASE="$2"
+      shift 2
+      ;;
     --help|-h)
       cat << EOF
 Install CLAUDE.md development framework to ~/.claude/
@@ -222,6 +231,9 @@ Options:
   --version REF        Exact reviewed release tag or commit for first-party artifacts.
                        Defaults to this checkout's HEAD when that commit is on the
                        remote, otherwise the latest release. Moving refs are rejected.
+  --source-repo OWNER/REPO
+                       First-party GitHub repository to install from. Use this with
+                       a maintained fork; the default is citypaul/.dotfiles.
   --help, -h           Show this help message
 
 Default external skill sources are pinned to reviewed commits; the installer
@@ -249,6 +261,9 @@ Examples:
   # From an inspected checkout; pins all first-party downloads to exact HEAD
   $0 --version "\$(git rev-parse HEAD)"
 
+  # Install a reviewed commit from a maintained fork
+  $0 --source-repo your-user/.dotfiles --version "\$(git rev-parse HEAD)"
+
 EOF
       exit 0
       ;;
@@ -259,6 +274,12 @@ EOF
       ;;
   esac
 done
+
+if ! [[ "$OWN_SKILLS_REPO_BASE" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+  echo -e "${RED}Error: --source-repo must be a GitHub OWNER/REPO name${NC}"
+  exit 1
+fi
+BASE_URL="https://raw.githubusercontent.com/$OWN_SKILLS_REPO_BASE"
 
 # The installer must work for anyone, anywhere: inside a checkout, from a
 # stray copy of this file, or piped straight from a download. It pins to an exact
@@ -280,13 +301,29 @@ if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
-# True only for a git checkout of this repository. Any other repo — including
-# whatever directory a piped install was launched from — is not a version source.
-own_checkout() {
+# Print the local remote that names the selected source repository. Any other
+# checkout — including whatever directory a piped install was launched from —
+# is not a version source.
+selected_checkout_remote() {
   [[ -n "$script_dir" ]] || return 1
   command -v git >/dev/null 2>&1 || return 1
   git -C "$script_dir" rev-parse --git-dir >/dev/null 2>&1 || return 1
-  git -C "$script_dir" remote -v 2>/dev/null | grep -qF "$OWN_SKILLS_REPO_BASE"
+  git -C "$script_dir" remote -v 2>/dev/null |
+    awk -v repo="$OWN_SKILLS_REPO_BASE" '
+      function github_repo(url, normalized) {
+        normalized = url
+        sub(/^https:\/\/github\.com\//, "", normalized)
+        sub(/^git@github\.com:/, "", normalized)
+        sub(/^ssh:\/\/git@github\.com\//, "", normalized)
+        sub(/\.git$/, "", normalized)
+        return normalized
+      }
+      github_repo($2) == repo { print $1; exit }
+    '
+}
+
+own_checkout() {
+  [[ -n "$(selected_checkout_remote)" ]]
 }
 
 # Newest published release tag, resolved straight from the remote so it works
@@ -314,11 +351,14 @@ remote_has_commit() {
   local sha="$1"
   git ls-remote "https://github.com/$OWN_SKILLS_REPO_BASE.git" 2>/dev/null |
     grep -q "^$sha[[:space:]]" && return 0
-  # Not at a ref tip, but a checkout of THIS repository can prove reachability.
-  own_checkout || return 1
-  git -C "$script_dir" merge-base --is-ancestor "$sha" \
-    "$(git -C "$script_dir" rev-parse --verify "refs/remotes/origin/main" 2>/dev/null || echo "$sha")" \
-    2>/dev/null
+  # Not at a ref tip, but a checkout can prove that one of the selected
+  # repository's own remote-tracking refs contains it. Do not assume the
+  # selected repository is named origin or that its default branch is main.
+  local remote
+  remote="$(selected_checkout_remote)"
+  [[ -n "$remote" ]] || return 1
+  git -C "$script_dir" for-each-ref --contains "$sha" \
+    --format='%(refname)' "refs/remotes/$remote/" 2>/dev/null | grep -q .
 }
 
 if [[ -n "$VERSION" ]]; then
@@ -805,7 +845,7 @@ if [[ "$INSTALL_SKILLS" == true ]]; then
 
   backup_selected_skills "${install_manifest[@]}"
 
-  install_skills_from "$OWN_SKILLS_REPO" "own skills (citypaul/.dotfiles)" "" "${FIRST_PARTY_SKILLS[@]}"
+  install_skills_from "$OWN_SKILLS_REPO" "own skills ($OWN_SKILLS_REPO_BASE)" "" "${FIRST_PARTY_SKILLS[@]}"
 
   if [[ "$INSTALL_EXTERNAL" == true ]]; then
     install_optional_skills_from "$WEB_QUALITY_SKILLS_REPO" "web quality skills (addyosmani/web-quality-skills)" "" "${WEB_QUALITY_SKILLS[@]}"
@@ -929,7 +969,7 @@ fi
 
 if [[ "$INSTALL_SKILLS" == true ]]; then
   echo -e "  ${GREEN}✓${NC} skills (installed via skills.sh for: ${SKILL_AGENTS[*]})"
-  echo -e "     • citypaul/.dotfiles — auto-discovered patterns (tdd, testing, typescript-strict, ...)"
+  echo -e "     • $OWN_SKILLS_REPO_BASE — auto-discovered patterns (tdd, testing, typescript-strict, ...)"
   if [[ "$INSTALL_EXTERNAL" == true ]]; then
     echo -e "     • addyosmani/web-quality-skills — accessibility, performance, SEO, ..."
     echo -e "     • vercel/next.js — Cache Components optimizer + adoption workflow skills"

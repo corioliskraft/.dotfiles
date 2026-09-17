@@ -1,25 +1,50 @@
 ---
 name: refactoring
-description: Refactoring assessment and behavior-preserving patterns for code with a passing baseline and proportionate preservation evidence. Use when the user asks to clean up, tidy, simplify, restructure, deduplicate, collapse, or merge look-alike code in a selected area, or after GREEN establishes the passing baseline for a TDD increment. Mutation testing verifies the accumulated result later at the end-of-phase PR-readiness gate. Covers recoverable-baseline discipline, when refactoring adds value vs when to skip it, and priority classification; commits always require explicit user approval. For any slice in a selected whole-path reduction program—transition or terminal—use reduce-system-complexity as the governing skill; refactoring may be secondary when applicable. For repository-wide architecture discovery use improve-codebase-architecture; for a module contract use codebase-design. Do NOT use for insufficiently evidenced code or adding behavior.
+description: Refactoring assessment and behavior-preserving patterns for code with a passing baseline and proportionate preservation evidence. Use when the user asks to clean up, tidy, simplify, restructure, deduplicate, collapse, or merge look-alike code in a selected area, or after GREEN establishes the passing baseline for any TDD increment that changed production code. Mutation testing verifies the accumulated result later at the end-of-phase PR-readiness gate. Covers recoverable-baseline discipline, when refactoring adds value vs when to skip it, and priority classification; commits always require explicit user approval. For any slice in a selected whole-path reduction program—transition or terminal—use reduce-system-complexity as the governing skill and use refactoring for the required touched-production assessment. For repository-wide architecture discovery use improve-codebase-architecture; for a module contract use codebase-design. Do NOT use for insufficiently evidenced code or adding behavior.
 ---
 
 # Refactoring
 
-Refactoring is the final step of each fast RED-GREEN-REFACTOR increment when restructuring is applicable. Assess it after GREEN establishes a passing behavior-test baseline. Do not run the automated mutation harness before or after each refactor; mutation testing verifies the completed phase once the work is otherwise ready for a PR.
+Refactoring is the final step of each fast RED-GREEN-REFACTOR increment. Whenever production code changed, the **assessment is mandatory** after GREEN establishes a passing behavior-test baseline; making a refactoring edit remains optional. Do not run the automated mutation harness before or after each refactor; mutation testing verifies the completed phase once the work is otherwise ready for a PR.
 
 Because automated mutation evidence is intentionally deferred, the baseline's strength is not yet mutation-harness-verified during refactoring. Keep each refactor small, strictly behavior-preserving, and green under the existing oracles; the final gate validates the accumulated result.
 
-This skill safely implements a bounded, behavior-preserving improvement. Use `improve-codebase-architecture` to discover and rank architecture candidates, then `codebase-design` to design a selected module contract before returning here for implementation. If the slice participates in a selected whole-path reduction program, whether as a transition or terminal reduction, `reduce-system-complexity` governs the ledger and gate state; use this skill only as a secondary refactoring assessment when applicable.
+This skill safely implements a bounded, behavior-preserving improvement. Use `improve-codebase-architecture` to discover and rank architecture candidates, then `codebase-design` to design a selected module contract before returning here for implementation. If the slice participates in a selected whole-path reduction program, whether as a transition or terminal reduction, `reduce-system-complexity` governs the ledger and gate state; when production code changes, use this skill for the required secondary touched-symbol assessment.
 
 ## When to Refactor
 
 - Assess after GREEN or another passing proportionate preservation baseline
 - Run the applicable tests yourself before you assess, before your first edit, and before any reply that declines to edit. Declining a request, or classifying every candidate Skip, is still an assessment, and an assessment that rests on no test run rests on nothing
+- Inventory every changed production function or symbol in the selected diff before deciding that the code is clean. Exclude generated and vendored code, and do not widen the review target to untouched code merely because it is nearby
+- Give every inventoried symbol one disposition: `keep`, `simplify now`, or `follow-up`, with a one-line rationale. A clean assessment explicitly records `keep`; silence is not coverage
 - Before the first edit, list every candidate change and label each one Critical, High, Nice or Skip
-- Whether you changed everything, one thing, or nothing, the final reply must carry that labelled list, Skip items included, as one line per candidate — `Critical: <what and why>`, `High: <what and why>`, `Nice: <what and why>`, `Skip: <what and why>` — closed by a `Decision: <what you did or did not do>` line. A summary of what changed is not an assessment, and neither is an unlabelled recommendation. An unstated assessment is an unmade assessment
+- Whether you changed everything, one thing, or nothing, the final reply must carry that labelled list, Skip items included, as one line per candidate — `<Critical|High|Nice|Skip>: <keep|simplify now|follow-up> · <file:symbol> — <rationale>` — closed by a `Decision: <what you did or did not do>` line. A summary of what changed is not an assessment, and neither is an unlabelled recommendation. An unstated assessment is an unmade assessment
 - When every candidate is Skip, say so in those words and change nothing
 - Only refactor if it improves the code
 - **Establish a verified, recoverable baseline before refactoring; commit only with explicit user approval**
+
+### Touched-Production Scan
+
+For every changed production function or symbol, ask the same small set of
+general questions. They are intentionally broader than any particular syntax:
+
+1. Is every new mechanism necessary for the behavior or guarantee being delivered?
+2. Can the same behavior be expressed more directly with fewer indirections or states?
+3. Is copied or legacy structure still appropriate under the current APIs and constraints?
+4. Is every abstraction, dependency, parameter, and exported symbol justified by a current caller or rule?
+5. Do context, state, ownership, effects, and errors cross the correct boundary?
+6. Did the change duplicate knowledge or preserve obsolete structure?
+
+Record one line per touched symbol in this combined shape:
+
+```text
+High: simplify now · path/to/file.ts:changedFunction — remove an obsolete adapter layer; the current API accepts the callback directly.
+Skip: keep · path/to/file.ts:alreadyDirect — already expresses the behavior directly with justified dependencies.
+Nice: follow-up · path/to/file.ts:legacySibling — related cleanup is real but outside the selected diff.
+```
+
+The priority class governs urgency; the disposition governs this boundary. Do
+not turn `follow-up` into permission to edit outside the agreed scope.
 
 ### Establish a Recoverable Baseline - WHY
 
@@ -36,7 +61,7 @@ If the baseline cannot be restored safely without creating a commit, stop and as
 2. CHECKPOINT: Record the baseline and preservation evidence. Create a baseline commit only when the user explicitly approves it
 3. REFACTOR: Improve structure in small steps under the `tdd` skill's canonical fast-feedback policy. From a clean baseline, prefer a proven repository-owned graph-complete watcher; use diff-selected Vitest watch only when the installed version/configuration has passed the canonical clean-start live proof, otherwise repeat the affected one-shot. In monorepos use the root graph so transitive consumers remain eligible
 4. VERIFY: Keep focused and affected tests plus other proportionate evidence green after each step; do not rerun the full suite after every edit
-5. CHECKPOINT: Present the verified refactor together with the labelled `Critical:`/`High:`/`Nice:`/`Skip:` assessment lines and the closing `Decision:` line; a summary of what changed does not close this step. Commit it only after explicit user approval
+5. CHECKPOINT: Present the verified refactor together with the complete touched-production inventory, labelled `Critical`/`High`/`Nice`/`Skip` assessment, `keep`/`simplify now`/`follow-up` dispositions, and the closing `Decision:` line; a summary of what changed does not close this step. Commit it only after explicit user approval
 6. PRE-PR GATE: When the phase is otherwise ready for a PR, run mutation testing once for the accumulated scope where meaningful, or record explicit `N/A` plus proportionate alternate evidence; address valuable survivors within that gate
 
 ## Priority Classification
@@ -149,6 +174,7 @@ refactor: rename ambiguous parameter names
 ## Refactoring Checklist
 
 - [ ] Existing behavior tests pass; test edits are not hiding a behavior change
+- [ ] Every changed production function or symbol has a `keep`, `simplify now`, or `follow-up` disposition with a rationale
 - [ ] Focused/affected tests stayed green during refactoring, and the repository-defined complete non-watch PR test gate passes before PR
 - [ ] If the refactored phase is ready for a PR, mutation results were reviewed once for the accumulated scope where meaningful, or explicit `N/A` plus proportionate alternate evidence was recorded
 - [ ] No unplanned consumer-facing API was added; internal or temporary contracts follow the selected design and compatibility plan
